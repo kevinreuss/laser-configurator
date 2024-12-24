@@ -113,35 +113,47 @@
             );
             console.log("Anzahl Nodes:", Object.keys(nodes).length);
 
-            // Finde min/max Koordinaten für die Skalierung
+            // Finde min/max Koordinaten basierend auf den tatsächlichen Straßenpunkten
             let minLon = Infinity,
               maxLon = -Infinity;
             let minLat = Infinity,
               maxLat = -Infinity;
 
-            Object.values(nodes).forEach((node) => {
-              minLon = Math.min(minLon, node.lon);
-              maxLon = Math.max(maxLon, node.lon);
-              minLat = Math.min(minLat, node.lat);
-              maxLat = Math.max(maxLat, node.lat);
+            // Zuerst alle Straßenpunkte durchgehen
+            ways.forEach((way) => {
+              way.nodes.forEach((nodeId) => {
+                const node = nodes[nodeId];
+                minLon = Math.min(minLon, node.lon);
+                maxLon = Math.max(maxLon, node.lon);
+                minLat = Math.min(minLat, node.lat);
+                maxLat = Math.max(maxLat, node.lat);
+              });
             });
 
-            console.log("Koordinaten-Bereich:", {
-              minLon,
-              maxLon,
-              minLat,
-              maxLat,
-            });
+            // Sichtbare Kartengrenzen für das Herz
+            const visibleBounds = map.getBounds();
+            const centerLon =
+              (visibleBounds.getEast() + visibleBounds.getWest()) / 2;
+            const centerLat =
+              (visibleBounds.getNorth() + visibleBounds.getSouth()) / 2;
 
-            // Skalierungsfunktionen für die Straßen
+            // Skalierungsfunktionen für die Straßen basierend auf den tatsächlichen Grenzen
             const scaleX = (lon) => ((lon - minLon) / (maxLon - minLon)) * 300;
             const scaleY = (lat) =>
               300 - ((lat - minLat) / (maxLat - minLat)) * 300;
 
-            // Skaliere das Herz auf die gleiche Größe wie in der Vorschau
-            const heartScale = 300; // Gleiche Größe wie das Overlay
-            const heartCenterX = 150;
-            const heartCenterY = 150;
+            // Berechne die Herzgröße basierend auf dem sichtbaren Kartenausschnitt
+            const visibleWidth =
+              visibleBounds.getEast() - visibleBounds.getWest();
+            const visibleHeight =
+              visibleBounds.getNorth() - visibleBounds.getSouth();
+            const heartSize = Math.min(visibleWidth, visibleHeight) * 0.4;
+
+            // Skaliere das Herz
+            const heartCenterX = scaleX(centerLon);
+            const heartCenterY = scaleY(centerLat);
+            const heartScale = (heartSize / (maxLon - minLon)) * 300;
+
             const heartPath = `
               <path d="M${heartCenterX},${heartCenterY - 100} 
                       C${heartCenterX + 70},${heartCenterY - 180} ${
@@ -152,8 +164,20 @@
             },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z" />
             `;
 
-            // Generiere das SVG mit den Straßen (ohne Clipping)
+            // Generiere das SVG mit den Straßen und dem Herz
             let svgContent = "";
+
+            // Füge zuerst das Herz ein
+            svgContent += `<path d="M${heartCenterX},${heartCenterY - 100} 
+                      C${heartCenterX + 70},${heartCenterY - 180} ${
+              heartCenterX + 170
+            },${heartCenterY - 120} ${heartCenterX},${heartCenterY + 50}
+                      C${heartCenterX - 170},${heartCenterY - 120} ${
+              heartCenterX - 70
+            },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z"
+                      fill="none" stroke="red" stroke-width="2"/>`;
+
+            // Füge dann die Straßen hinzu
             ways.forEach((way) => {
               const points = way.nodes
                 .map((id) => nodes[id])
@@ -162,7 +186,7 @@
               svgContent += `<polyline points="${points}" stroke="black" stroke-width="0.5" fill="none"/>`;
             });
 
-            // Komplettes SVG (ohne Clipping-Mask)
+            // Komplettes SVG
             const finalSvg = `
             <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
               ${svgContent}
