@@ -390,11 +390,42 @@
               // Generiere SVG-Pfade aus den verbundenen Segmenten
               const pathData = connectedPaths
                 .map((path) => {
-                  return path.reduce((acc, point, index) => {
-                    return index === 0
-                      ? `M ${point.x} ${point.y}`
-                      : `${acc} L ${point.x} ${point.y}`;
-                  }, "");
+                  // Wenn der Pfad zu kurz ist, verwende normale Linien
+                  if (path.length < 3) {
+                    return path.reduce((acc, point, index) => {
+                      return index === 0
+                        ? `M ${point.x} ${point.y}`
+                        : `${acc} L ${point.x} ${point.y}`;
+                    }, "");
+                  }
+
+                  // Benutze Kurven für längere Pfade
+                  let d = `M ${path[0].x} ${path[0].y}`;
+
+                  // Glättungsfaktor (0.2 = stark geglättet, 0.8 = weniger geglättet)
+                  const smoothing = 0.5;
+
+                  for (let i = 0; i < path.length - 2; i++) {
+                    const p0 = i > 0 ? path[i - 1] : path[0];
+                    const p1 = path[i];
+                    const p2 = path[i + 1];
+                    const p3 = path[i + 2];
+
+                    // Berechne Kontrollpunkte für die Kurve
+                    const cp1x = p1.x + (p2.x - p0.x) * smoothing;
+                    const cp1y = p1.y + (p2.y - p0.y) * smoothing;
+                    const cp2x = p2.x - (p3.x - p1.x) * smoothing;
+                    const cp2y = p2.y - (p3.y - p1.y) * smoothing;
+
+                    // Füge Kurve hinzu
+                    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+                  }
+
+                  // Füge letzten Punkt hinzu
+                  const last = path[path.length - 1];
+                  d += ` L ${last.x},${last.y}`;
+
+                  return d;
                 })
                 .join(" ");
 
