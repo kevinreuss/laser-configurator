@@ -285,18 +285,22 @@
             );
 
             const visibleBounds = map.getBounds();
-            const svgWidth = 500;
-            const svgHeight = 500;
+            const svgWidth = document.getElementById("svg-preview").clientWidth;
+            const svgHeight =
+              document.getElementById("svg-preview").clientHeight;
 
-            const scaleX = (lon) =>
-              ((lon - visibleBounds.getWest()) /
-                (visibleBounds.getEast() - visibleBounds.getWest())) *
-              svgWidth;
-            const scaleY = (lat) =>
-              svgHeight -
-              ((lat - visibleBounds.getSouth()) /
-                (visibleBounds.getNorth() - visibleBounds.getSouth())) *
-                svgHeight;
+            // Verbesserte Skalierungsfunktionen
+            const scaleX = (lon) => {
+              const mapWidth = map.getContainer().offsetWidth;
+              const x = map.latLngToContainerPoint([0, lon]).x;
+              return (x / mapWidth) * svgWidth;
+            };
+
+            const scaleY = (lat) => {
+              const mapHeight = map.getContainer().offsetHeight;
+              const y = map.latLngToContainerPoint([lat, 0]).y;
+              return (y / mapHeight) * svgHeight;
+            };
 
             // Generate SVG paths with clipping
             let svgContent = "";
@@ -411,9 +415,13 @@
               }
             });
 
-            // Complete SVG
+            // Aktualisierte SVG-Generierung
             const finalSvg = `
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="100%" height="100%">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   viewBox="0 0 ${svgWidth} ${svgHeight}" 
+                   width="${svgWidth}" 
+                   height="${svgHeight}"
+                   style="background: transparent">
                 ${svgContent}
               </svg>
             `;
