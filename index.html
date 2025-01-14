@@ -84,6 +84,8 @@
         [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
         (
           way["highway"]["highway"!~"footway|path|cycleway|service|track"];
+          way["waterway"];
+          way["railway"];
         );
         out body;
         >;
@@ -109,7 +111,15 @@
                 );
                 return [node.lat, node.lon];
               });
-              L.polyline(nodes, { color: "red", weight: 1 }).addTo(map);
+
+              let color = "black"; // Standard für Straßen
+              if (way.tags.waterway) {
+                color = "blue";
+              } else if (way.tags.railway) {
+                color = "red";
+              }
+
+              L.polyline(nodes, { color: color, weight: 1 }).addTo(map);
             });
 
             const nodes = Object.fromEntries(
@@ -183,13 +193,21 @@
             },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z"
                       fill="none" stroke="red" stroke-width="2"/>`;
 
-            // Füge dann die Straßen hinzu
+            // Füge dann die Straßen, Gewässer und Bahnlinien hinzu
             ways.forEach((way) => {
               const points = way.nodes
                 .map((id) => nodes[id])
                 .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`)
                 .join(" ");
-              svgContent += `<polyline points="${points}" stroke="black" stroke-width="0.5" fill="none"/>`;
+
+              let strokeColor = "black"; // Standard für Straßen
+              if (way.tags.waterway) {
+                strokeColor = "blue";
+              } else if (way.tags.railway) {
+                strokeColor = "red";
+              }
+
+              svgContent += `<polyline points="${points}" stroke="${strokeColor}" stroke-width="0.5" fill="none"/>`;
             });
 
             // Komplettes SVG
