@@ -80,11 +80,11 @@
                 return [node.lat, node.lon];
               });
 
-              let color = "black";
+              let color = "red";
               if (way.tags.waterway) {
                 color = "blue";
               } else if (way.tags.railway) {
-                color = "red";
+                color = "green";
               }
 
               L.polyline(nodes, { color: color, weight: 1 }).addTo(map);
@@ -113,9 +113,9 @@
             });
 
             // Skalierungsfunktionen
-            const scaleX = (lon) => ((lon - minLon) / (maxLon - minLon)) * 300;
+            const scaleX = (lon) => ((lon - minLon) / (maxLon - minLon)) * 500;
             const scaleY = (lat) =>
-              300 - ((lat - minLat) / (maxLat - minLat)) * 300;
+              500 - ((lat - minLat) / (maxLat - minLat)) * 500;
 
             // Generiere das SVG nur mit den Straßen
             let svgContent = "";
@@ -125,11 +125,11 @@
                 .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`)
                 .join(" ");
 
-              let strokeColor = "black";
+              let strokeColor = "red";
               if (way.tags.waterway) {
                 strokeColor = "blue";
               } else if (way.tags.railway) {
-                strokeColor = "red";
+                strokeColor = "green";
               }
 
               svgContent += `<polyline points="${points}" stroke="${strokeColor}" stroke-width="0.5" fill="none"/>`;
@@ -137,7 +137,7 @@
 
             // Komplettes SVG
             const finalSvg = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+              <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
                 ${svgContent}
               </svg>
             `;
