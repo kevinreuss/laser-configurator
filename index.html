@@ -46,6 +46,16 @@
       #searchResults div:hover {
         background-color: #f0f0f0;
       }
+      .layer-controls {
+        margin: 20px;
+        display: flex;
+        gap: 20px;
+      }
+      .layer-control {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
     </style>
   </head>
   <body>
@@ -71,6 +81,52 @@
       <button onclick="goToLocation('Münchner Marienplatz')">
         Münchner Marienplatz
       </button>
+    </div>
+    <div class="layer-controls">
+      <div class="layer-control">
+        <input type="checkbox" id="show-motorway" checked />
+        <label for="show-motorway">Autobahnen</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-trunk" checked />
+        <label for="show-trunk">Schnellstraßen</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-primary" checked />
+        <label for="show-primary">Bundesstraßen</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-secondary" checked />
+        <label for="show-secondary">Landstraßen</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-tertiary" checked />
+        <label for="show-tertiary">Verbindungsstraßen</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-rail" checked />
+        <label for="show-rail">Eisenbahn</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-subway" checked />
+        <label for="show-subway">U-Bahn</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-light-rail" checked />
+        <label for="show-light-rail">S-Bahn</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-tram" checked />
+        <label for="show-tram">Straßenbahn</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-river" checked />
+        <label for="show-river">Flüsse</label>
+      </div>
+      <div class="layer-control">
+        <input type="checkbox" id="show-canal" checked />
+        <label for="show-canal">Kanäle</label>
+      </div>
     </div>
     <div class="container">
       <div id="map"></div>
@@ -146,13 +202,53 @@
       function generateSVG() {
         const bounds = map.getBounds();
 
-        // Updated query to include roads, railways and waterways
+        // Build query based on checked boxes
+        const highwayTypes = [];
+        if (document.getElementById("show-motorway").checked)
+          highwayTypes.push("motorway", "motorway_link");
+        if (document.getElementById("show-trunk").checked)
+          highwayTypes.push("trunk", "trunk_link");
+        if (document.getElementById("show-primary").checked)
+          highwayTypes.push("primary", "primary_link");
+        if (document.getElementById("show-secondary").checked)
+          highwayTypes.push("secondary", "secondary_link");
+        if (document.getElementById("show-tertiary").checked)
+          highwayTypes.push("tertiary", "tertiary_link");
+
+        const railTypes = [];
+        if (document.getElementById("show-rail").checked)
+          railTypes.push("rail");
+        if (document.getElementById("show-subway").checked)
+          railTypes.push("subway");
+        if (document.getElementById("show-light-rail").checked)
+          railTypes.push("light_rail");
+        if (document.getElementById("show-tram").checked)
+          railTypes.push("tram");
+
+        const waterTypes = [];
+        if (document.getElementById("show-river").checked)
+          waterTypes.push("river");
+        if (document.getElementById("show-canal").checked)
+          waterTypes.push("canal");
+
         const query = `
           [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
           (
-            way["highway"]["highway"!~"footway|path|cycleway|service|track"];
-            way["railway"];
-            way["waterway"];
+            ${
+              highwayTypes.length
+                ? `way["highway"~"^(${highwayTypes.join("|")})$"];`
+                : ""
+            }
+            ${
+              railTypes.length
+                ? `way["railway"~"^(${railTypes.join("|")})$"];`
+                : ""
+            }
+            ${
+              waterTypes.length
+                ? `way["waterway"~"^(${waterTypes.join("|")})$"];`
+                : ""
+            }
           );
           out body;
           >;
@@ -217,13 +313,13 @@
 
               if (points.length > 0) {
                 let color = "#000000";
-                let width = lineWidth;
+                let width = "2.5";
                 if (way.tags.railway) {
                   color = "#ff0000";
-                  width = lineWidth;
+                  width = "4";
                 } else if (way.tags.waterway) {
                   color = "#0000ff";
-                  width = lineWidth;
+                  width = "5";
                 }
 
                 // Create separate polylines for each continuous segment
@@ -273,6 +369,11 @@
 
       // Initial generieren
       generateSVG();
+
+      // Add event listeners for checkboxes
+      document.querySelectorAll(".layer-control input").forEach((checkbox) => {
+        checkbox.addEventListener("change", generateSVG);
+      });
     </script>
   </body>
 </html>
