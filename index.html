@@ -104,27 +104,27 @@
         <label for="show-tertiary">Verbindungsstraßen</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-rail" checked />
+        <input type="checkbox" id="show-rail" />
         <label for="show-rail">Eisenbahn</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-subway" checked />
+        <input type="checkbox" id="show-subway" />
         <label for="show-subway">U-Bahn</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-light-rail" checked />
+        <input type="checkbox" id="show-light-rail" />
         <label for="show-light-rail">S-Bahn</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-tram" checked />
+        <input type="checkbox" id="show-tram" />
         <label for="show-tram">Straßenbahn</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-river" checked />
+        <input type="checkbox" id="show-river" />
         <label for="show-river">Flüsse</label>
       </div>
       <div class="layer-control">
-        <input type="checkbox" id="show-canal" checked />
+        <input type="checkbox" id="show-canal" />
         <label for="show-canal">Kanäle</label>
       </div>
     </div>
@@ -204,9 +204,12 @@
       // Funktion zum Generieren der SVG
       function generateSVG() {
         const bounds = map.getBounds();
+        const zoomLevel = map.getZoom();
 
-        // Build query based on checked boxes
+        // Grundsätzlich nur wichtige Straßen für den Lasercutter
         const highwayTypes = [];
+
+        // Hauptverkehrsadern immer anzeigen
         if (document.getElementById("show-motorway").checked)
           highwayTypes.push("motorway", "motorway_link");
         if (document.getElementById("show-trunk").checked)
@@ -215,9 +218,16 @@
           highwayTypes.push("primary", "primary_link");
         if (document.getElementById("show-secondary").checked)
           highwayTypes.push("secondary", "secondary_link");
-        if (document.getElementById("show-tertiary").checked)
-          highwayTypes.push("tertiary", "tertiary_link");
 
+        // Nur bei größerem Zoom auch tertiäre Straßen
+        if (
+          zoomLevel >= 15 &&
+          document.getElementById("show-tertiary").checked
+        ) {
+          highwayTypes.push("tertiary", "tertiary_link");
+        }
+
+        // Schienen (nur Hauptlinien)
         const railTypes = [];
         if (document.getElementById("show-rail").checked)
           railTypes.push("rail");
@@ -225,9 +235,8 @@
           railTypes.push("subway");
         if (document.getElementById("show-light-rail").checked)
           railTypes.push("light_rail");
-        if (document.getElementById("show-tram").checked)
-          railTypes.push("tram");
 
+        // Nur große Wasserstraßen
         const waterTypes = [];
         if (document.getElementById("show-river").checked)
           waterTypes.push("river");
@@ -315,22 +324,23 @@
               let lineWidth;
 
               if (way.tags.highway) {
+                color = "#000000";
                 switch (way.tags.highway) {
                   case "motorway":
                   case "motorway_link":
-                    lineWidth = "8";
+                    lineWidth = "12";
                     break;
                   case "trunk":
                   case "trunk_link":
-                    lineWidth = "7";
+                    lineWidth = "10";
                     break;
                   case "primary":
                   case "primary_link":
-                    lineWidth = "6";
+                    lineWidth = "8";
                     break;
                   case "secondary":
                   case "secondary_link":
-                    lineWidth = "5";
+                    lineWidth = "6";
                     break;
                   case "tertiary":
                   case "tertiary_link":
@@ -340,30 +350,29 @@
                     lineWidth = "3";
                 }
               } else if (way.tags.railway) {
+                color = "#ff0000";
                 switch (way.tags.railway) {
                   case "rail":
-                    lineWidth = "3";
+                    lineWidth = "4";
                     break;
                   case "subway":
                   case "light_rail":
-                    lineWidth = "2.5";
-                    break;
-                  case "tram":
-                    lineWidth = "2";
+                    lineWidth = "3";
                     break;
                   default:
                     lineWidth = "2";
                 }
               } else if (way.tags.waterway) {
+                color = "#0000ff";
                 switch (way.tags.waterway) {
                   case "river":
-                    lineWidth = "6";
+                    lineWidth = "10";
                     break;
                   case "canal":
-                    lineWidth = "4";
+                    lineWidth = "6";
                     break;
                   default:
-                    lineWidth = "3";
+                    lineWidth = "4";
                 }
               }
 
@@ -386,23 +395,9 @@
               }
 
               if (points.length > 0) {
-                let color = "#000000";
-                if (way.tags.highway) {
-                  color = "#000000";
-                } else if (way.tags.railway) {
-                  color = "#ff0000";
-                } else if (way.tags.waterway) {
-                  color = "#0000ff";
-                }
-
-                // Draw each segment
-                segments.forEach((segment) => {
-                  if (segment.length > 1) {
-                    svgContent += `<polyline points="${segment.join(
-                      " "
-                    )}" stroke="${color}" stroke-width="${lineWidth}" fill="none"/>`;
-                  }
-                });
+                svgContent += `<polyline points="${segments.join(
+                  " "
+                )}" stroke="${color}" stroke-width="${lineWidth}" fill="none"/>`;
               }
             });
 
