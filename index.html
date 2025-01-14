@@ -213,15 +213,17 @@
                 }
               });
 
+              let lineWidth = "2.5";
+
               if (points.length > 0) {
-                let color = "black";
-                let width = "0.5";
+                let color = "#000000";
+                let width = lineWidth;
                 if (way.tags.railway) {
-                  color = "#666";
-                  width = "0.8";
+                  color = "#ff0000";
+                  width = lineWidth;
                 } else if (way.tags.waterway) {
-                  color = "#0077be";
-                  width = "1";
+                  color = "#0000ff";
+                  width = lineWidth;
                 }
 
                 // Create separate polylines for each continuous segment
