@@ -24,110 +24,21 @@
         width: 50%;
         border: 1px solid #ccc;
       }
-      .controls {
-        margin: 20px;
-      }
-      .search-container {
-        margin-bottom: 10px;
-      }
-      #searchResults {
+      .heart {
         position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        max-height: 200px;
-        overflow-y: auto;
-        width: 300px;
-        display: none;
-      }
-      #searchResults div {
-        padding: 5px 10px;
-        cursor: pointer;
-      }
-      #searchResults div:hover {
-        background-color: #f0f0f0;
-      }
-      .layer-controls {
-        margin: 20px;
-        display: flex;
-        gap: 20px;
-      }
-      .layer-control {
-        display: flex;
-        align-items: center;
-        gap: 5px;
+        top: 50%;
+        left: 25%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        fill: none;
+        stroke: red;
+        stroke-width: 2;
+        z-index: 1000;
       }
     </style>
   </head>
   <body>
     <h1>Laser Configurator</h1>
-    <div class="controls">
-      <div class="search-container">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Ort suchen..."
-          style="width: 300px"
-        />
-        <div id="searchResults"></div>
-      </div>
-      <button onclick="goToLocation('Alexanderplatz, Berlin')">
-        Alexanderplatz Berlin
-      </button>
-      <button onclick="goToLocation('Brandenburger Tor, Berlin')">
-        Brandenburger Tor
-      </button>
-      <button onclick="goToLocation('Kölner Dom')">Kölner Dom</button>
-      <button onclick="goToLocation('Hamburger Hafen')">Hamburger Hafen</button>
-      <button onclick="goToLocation('Münchner Marienplatz')">
-        Münchner Marienplatz
-      </button>
-    </div>
-    <div class="layer-controls">
-      <div class="layer-control">
-        <input type="checkbox" id="show-motorway" checked />
-        <label for="show-motorway">Autobahnen</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-trunk" checked />
-        <label for="show-trunk">Schnellstraßen</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-primary" checked />
-        <label for="show-primary">Bundesstraßen</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-secondary" checked />
-        <label for="show-secondary">Landstraßen</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-tertiary" checked />
-        <label for="show-tertiary">Verbindungsstraßen</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-rail" />
-        <label for="show-rail">Eisenbahn</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-subway" />
-        <label for="show-subway">U-Bahn</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-light-rail" />
-        <label for="show-light-rail">S-Bahn</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-tram" />
-        <label for="show-tram">Straßenbahn</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-river" />
-        <label for="show-river">Flüsse</label>
-      </div>
-      <div class="layer-control">
-        <input type="checkbox" id="show-canal" />
-        <label for="show-canal">Kanäle</label>
-      </div>
-    </div>
     <div class="container">
       <div id="map"></div>
       <div id="svg-preview"></div>
@@ -137,8 +48,8 @@
     </div>
 
     <script>
-      // Initialize map centered on Alexanderplatz
-      const map = L.map("map").setView([52.5219, 13.4132], 15); // Alexanderplatz coordinates
+      // Initialisiere die Karte
+      const map = L.map("map").setView([52.5219, 13.4132], 15); // Alexanderplatz, Berlin
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
         {
@@ -146,129 +57,38 @@
         }
       ).addTo(map);
 
-      // Search functionality
-      const searchInput = document.getElementById("searchInput");
-      const searchResults = document.getElementById("searchResults");
-      let searchTimeout;
-
-      searchInput.addEventListener("input", function () {
-        clearTimeout(searchTimeout);
-        if (this.value.length < 3) {
-          searchResults.style.display = "none";
-          return;
-        }
-
-        searchTimeout = setTimeout(() => {
-          fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-              this.value
-            )}`
-          )
-            .then((response) => response.json())
-            .then((data) => {
-              searchResults.innerHTML = "";
-              data.slice(0, 5).forEach((result) => {
-                const div = document.createElement("div");
-                div.textContent = result.display_name;
-                div.onclick = () => {
-                  map.setView([result.lat, result.lon], 15);
-                  searchResults.style.display = "none";
-                  searchInput.value = result.display_name;
-                };
-                searchResults.appendChild(div);
-              });
-              searchResults.style.display = data.length ? "block" : "none";
-            });
-        }, 300);
-      });
-
-      // Hide search results when clicking outside
-      document.addEventListener("click", function (e) {
-        if (!searchResults.contains(e.target) && e.target !== searchInput) {
-          searchResults.style.display = "none";
-        }
-      });
-
-      // Function to go to predefined locations
-      function goToLocation(searchQuery) {
-        fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-            searchQuery
-          )}`
-        )
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.length > 0) {
-              map.setView([data[0].lat, data[0].lon], 15);
-            }
-          });
-      }
+      // Zeichne das Herz-Overlay
+      const svgOverlay = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg"
+      );
+      svgOverlay.setAttribute("class", "heart");
+      svgOverlay.setAttribute("width", "300");
+      svgOverlay.setAttribute("height", "300");
+      const path = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+      path.setAttribute(
+        "d",
+        "M150,50 C220,-30 320,30 150,200 C-20,30 80,-30 150,50 Z"
+      ); // Herz-Form
+      svgOverlay.appendChild(path);
+      document.body.appendChild(svgOverlay);
 
       // Funktion zum Generieren der SVG
       function generateSVG() {
         const bounds = map.getBounds();
-        const zoomLevel = map.getZoom();
-
-        // Grundsätzlich nur wichtige Straßen für den Lasercutter
-        const highwayTypes = [];
-
-        // Hauptverkehrsadern immer anzeigen
-        if (document.getElementById("show-motorway").checked)
-          highwayTypes.push("motorway", "motorway_link");
-        if (document.getElementById("show-trunk").checked)
-          highwayTypes.push("trunk", "trunk_link");
-        if (document.getElementById("show-primary").checked)
-          highwayTypes.push("primary", "primary_link");
-        if (document.getElementById("show-secondary").checked)
-          highwayTypes.push("secondary", "secondary_link");
-
-        // Nur bei größerem Zoom auch tertiäre Straßen
-        if (
-          zoomLevel >= 15 &&
-          document.getElementById("show-tertiary").checked
-        ) {
-          highwayTypes.push("tertiary", "tertiary_link");
-        }
-
-        // Schienen (nur Hauptlinien)
-        const railTypes = [];
-        if (document.getElementById("show-rail").checked)
-          railTypes.push("rail");
-        if (document.getElementById("show-subway").checked)
-          railTypes.push("subway");
-        if (document.getElementById("show-light-rail").checked)
-          railTypes.push("light_rail");
-
-        // Nur große Wasserstraßen
-        const waterTypes = [];
-        if (document.getElementById("show-river").checked)
-          waterTypes.push("river");
-        if (document.getElementById("show-canal").checked)
-          waterTypes.push("canal");
 
         const query = `
-          [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
-          (
-            ${
-              highwayTypes.length
-                ? `way["highway"~"^(${highwayTypes.join("|")})$"];`
-                : ""
-            }
-            ${
-              railTypes.length
-                ? `way["railway"~"^(${railTypes.join("|")})$"];`
-                : ""
-            }
-            ${
-              waterTypes.length
-                ? `way["waterway"~"^(${waterTypes.join("|")})$"];`
-                : ""
-            }
-          );
-          out body;
-          >;
-          out skel qt;
-        `;
+        [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
+        (
+          way["highway"]["highway"!~"footway|path|cycleway|service|track"];
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
 
         fetch(
           `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(
@@ -277,174 +97,114 @@
         )
           .then((response) => response.json())
           .then((data) => {
+            console.log("Rohdaten von Overpass:", data);
             const ways = data.elements.filter((el) => el.type === "way");
+            console.log("Gefundene Wege:", ways.length);
+
+            // Debug: Zeige die gefundenen Wege auf der Karte
+            ways.forEach((way) => {
+              const nodes = way.nodes.map((nodeId) => {
+                const node = data.elements.find(
+                  (el) => el.type === "node" && el.id === nodeId
+                );
+                return [node.lat, node.lon];
+              });
+              L.polyline(nodes, { color: "red", weight: 1 }).addTo(map);
+            });
+
             const nodes = Object.fromEntries(
               data.elements
                 .filter((el) => el.type === "node")
                 .map((node) => [node.id, { lat: node.lat, lon: node.lon }])
             );
+            console.log("Anzahl Nodes:", Object.keys(nodes).length);
 
-            const visibleBounds = map.getBounds();
-            const svgWidth = document.getElementById("svg-preview").clientWidth;
-            const svgHeight =
-              document.getElementById("svg-preview").clientHeight;
+            // Finde min/max Koordinaten basierend auf den tatsächlichen Straßenpunkten
+            let minLon = Infinity,
+              maxLon = -Infinity;
+            let minLat = Infinity,
+              maxLat = -Infinity;
 
-            // Verbesserte Skalierungsfunktionen
-            const scaleX = (lon) => {
-              const mapWidth = map.getContainer().offsetWidth;
-              const x = map.latLngToContainerPoint([0, lon]).x;
-              return (x / mapWidth) * svgWidth;
-            };
-
-            const scaleY = (lat) => {
-              const mapHeight = map.getContainer().offsetHeight;
-              const y = map.latLngToContainerPoint([lat, 0]).y;
-              return (y / mapHeight) * svgHeight;
-            };
-
-            // Gruppiere Wege nach ihren Eigenschaften
-            const groupedWays = {};
-
+            // Zuerst alle Straßenpunkte durchgehen
             ways.forEach((way) => {
-              let key;
-              if (way.tags.highway) {
-                key = `highway_${way.tags.highway}`;
-              } else if (way.tags.railway) {
-                key = `railway_${way.tags.railway}`;
-              } else if (way.tags.waterway) {
-                key = `waterway_${way.tags.waterway}`;
-              }
-
-              if (!groupedWays[key]) {
-                groupedWays[key] = {
-                  paths: [],
-                  color: way.tags.highway
-                    ? "#000000"
-                    : way.tags.railway
-                    ? "#ff0000"
-                    : "#0000ff",
-                  lineWidth: getLineWidth(way),
-                };
-              }
-
-              const points = way.nodes
-                .map((id) => nodes[id])
-                .filter((node) => node && isInBounds(node, visibleBounds))
-                .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`);
-
-              if (points.length > 0) {
-                groupedWays[key].paths.push(points);
-              }
+              way.nodes.forEach((nodeId) => {
+                const node = nodes[nodeId];
+                minLon = Math.min(minLon, node.lon);
+                maxLon = Math.max(maxLon, node.lon);
+                minLat = Math.min(minLat, node.lat);
+                maxLat = Math.max(maxLat, node.lat);
+              });
             });
 
-            // Verbesserte Pfadgenerierung für jede Gruppe
-            let svgContent = "";
-            for (const [key, group] of Object.entries(groupedWays)) {
-              // Konvertiere Punkte in numerisches Format für einfachere Verarbeitung
-              const numericPaths = group.paths.map((path) =>
-                path.map((point) => {
-                  const [x, y] = point.split(",").map(Number);
-                  return { x, y };
-                })
-              );
+            // Sichtbare Kartengrenzen für das Herz
+            const visibleBounds = map.getBounds();
+            const centerLon =
+              (visibleBounds.getEast() + visibleBounds.getWest()) / 2;
+            const centerLat =
+              (visibleBounds.getNorth() + visibleBounds.getSouth()) / 2;
 
-              // Finde und verbinde zusammenhängende Pfade
-              const connectedPaths = [];
-              while (numericPaths.length > 0) {
-                let currentPath = numericPaths.pop();
-                let wasExtended;
+            // Skalierungsfunktionen für die Straßen basierend auf den tatsächlichen Grenzen
+            const scaleX = (lon) => ((lon - minLon) / (maxLon - minLon)) * 300;
+            const scaleY = (lat) =>
+              300 - ((lat - minLat) / (maxLat - minLat)) * 300;
 
-                do {
-                  wasExtended = false;
-                  for (let i = numericPaths.length - 1; i >= 0; i--) {
-                    const otherPath = numericPaths[i];
+            // Berechne die Herzgröße basierend auf dem sichtbaren Kartenausschnitt
+            const visibleWidth =
+              visibleBounds.getEast() - visibleBounds.getWest();
+            const visibleHeight =
+              visibleBounds.getNorth() - visibleBounds.getSouth();
+            const heartSize = Math.min(visibleWidth, visibleHeight) * 0.4;
 
-                    // Prüfe Verbindungen an beiden Enden
-                    if (
-                      isPointsEqual(
-                        currentPath[0],
-                        otherPath[otherPath.length - 1]
-                      )
-                    ) {
-                      // Verbinde am Anfang
-                      currentPath = [...otherPath, ...currentPath.slice(1)];
-                      numericPaths.splice(i, 1);
-                      wasExtended = true;
-                    } else if (
-                      isPointsEqual(
-                        currentPath[currentPath.length - 1],
-                        otherPath[0]
-                      )
-                    ) {
-                      // Verbinde am Ende
-                      currentPath = [...currentPath, ...otherPath.slice(1)];
-                      numericPaths.splice(i, 1);
-                      wasExtended = true;
-                    }
-                  }
-                } while (wasExtended);
+            // Skaliere das Herz
+            const heartCenterX = scaleX(centerLon);
+            const heartCenterY = scaleY(centerLat);
+            const heartScale = (heartSize / (maxLon - minLon)) * 300;
 
-                connectedPaths.push(currentPath);
-              }
-
-              // Generiere SVG-Pfade aus den verbundenen Segmenten
-              const pathData = connectedPaths
-                .map((path) => {
-                  // Wenn der Pfad zu kurz ist, verwende normale Linien
-                  if (path.length < 3) {
-                    return path.reduce((acc, point, index) => {
-                      return index === 0
-                        ? `M ${point.x} ${point.y}`
-                        : `${acc} L ${point.x} ${point.y}`;
-                    }, "");
-                  }
-
-                  // Benutze Kurven für längere Pfade
-                  let d = `M ${path[0].x} ${path[0].y}`;
-
-                  // Glättungsfaktor (0.2 = stark geglättet, 0.8 = weniger geglättet)
-                  const smoothing = 0.5;
-
-                  for (let i = 0; i < path.length - 2; i++) {
-                    const p0 = i > 0 ? path[i - 1] : path[0];
-                    const p1 = path[i];
-                    const p2 = path[i + 1];
-                    const p3 = path[i + 2];
-
-                    // Berechne Kontrollpunkte für die Kurve
-                    const cp1x = p1.x + (p2.x - p0.x) * smoothing;
-                    const cp1y = p1.y + (p2.y - p0.y) * smoothing;
-                    const cp2x = p2.x - (p3.x - p1.x) * smoothing;
-                    const cp2y = p2.y - (p3.y - p1.y) * smoothing;
-
-                    // Füge Kurve hinzu
-                    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-                  }
-
-                  // Füge letzten Punkt hinzu
-                  const last = path[path.length - 1];
-                  d += ` L ${last.x},${last.y}`;
-
-                  return d;
-                })
-                .join(" ");
-
-              svgContent += `<path d="${pathData}" stroke="${group.color}" stroke-width="${group.lineWidth}" fill="none"/>`;
-            }
-
-            // Aktualisierte SVG-Generierung
-            const finalSvg = `
-              <svg xmlns="http://www.w3.org/2000/svg" 
-                   viewBox="0 0 ${svgWidth} ${svgHeight}" 
-                   width="${svgWidth}" 
-                   height="${svgHeight}"
-                   style="background: transparent">
-                ${svgContent}
-              </svg>
+            const heartPath = `
+              <path d="M${heartCenterX},${heartCenterY - 100} 
+                      C${heartCenterX + 70},${heartCenterY - 180} ${
+              heartCenterX + 170
+            },${heartCenterY - 120} ${heartCenterX},${heartCenterY + 50}
+                      C${heartCenterX - 170},${heartCenterY - 120} ${
+              heartCenterX - 70
+            },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z" />
             `;
 
+            // Generiere das SVG mit den Straßen und dem Herz
+            let svgContent = "";
+
+            // Füge zuerst das Herz ein
+            svgContent += `<path d="M${heartCenterX},${heartCenterY - 100} 
+                      C${heartCenterX + 70},${heartCenterY - 180} ${
+              heartCenterX + 170
+            },${heartCenterY - 120} ${heartCenterX},${heartCenterY + 50}
+                      C${heartCenterX - 170},${heartCenterY - 120} ${
+              heartCenterX - 70
+            },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z"
+                      fill="none" stroke="red" stroke-width="2"/>`;
+
+            // Füge dann die Straßen hinzu
+            ways.forEach((way) => {
+              const points = way.nodes
+                .map((id) => nodes[id])
+                .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`)
+                .join(" ");
+              svgContent += `<polyline points="${points}" stroke="black" stroke-width="0.5" fill="none"/>`;
+            });
+
+            // Komplettes SVG
+            const finalSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+              ${svgContent}
+            </svg>
+          `;
+
+            // Statt einem neuen Tab, füge die SVG in das Preview-Div ein
             const svgPreview = document.getElementById("svg-preview");
             svgPreview.innerHTML = finalSvg;
+
+            // Aktualisiere auch das Overlay-Herz
+            path.setAttribute("d", heartPath.match(/d="([^"]+)"/)[1]);
           });
       }
 
@@ -454,11 +214,6 @@
 
       // Initial generieren
       generateSVG();
-
-      // Add event listeners for checkboxes
-      document.querySelectorAll(".layer-control input").forEach((checkbox) => {
-        checkbox.addEventListener("change", generateSVG);
-      });
 
       function downloadSVG() {
         const svgContent = document.querySelector("#svg-preview svg").outerHTML;
@@ -471,66 +226,6 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-      }
-
-      // Hilfsfunktion für die Linienbreite
-      function getLineWidth(way) {
-        if (way.tags.highway) {
-          switch (way.tags.highway) {
-            case "motorway":
-            case "motorway_link":
-              return "12";
-            case "trunk":
-            case "trunk_link":
-              return "10";
-            case "primary":
-            case "primary_link":
-              return "8";
-            case "secondary":
-            case "secondary_link":
-              return "6";
-            case "tertiary":
-            case "tertiary_link":
-              return "4";
-            default:
-              return "3";
-          }
-        } else if (way.tags.railway) {
-          switch (way.tags.railway) {
-            case "rail":
-              return "4";
-            case "subway":
-            case "light_rail":
-              return "3";
-            default:
-              return "2";
-          }
-        } else if (way.tags.waterway) {
-          switch (way.tags.waterway) {
-            case "river":
-              return "10";
-            case "canal":
-              return "6";
-            default:
-              return "4";
-          }
-        }
-      }
-
-      function isInBounds(node, bounds) {
-        return (
-          node.lat <= bounds.getNorth() &&
-          node.lat >= bounds.getSouth() &&
-          node.lon <= bounds.getEast() &&
-          node.lon >= bounds.getWest()
-        );
-      }
-
-      // Hilfsfunktion zum Vergleich von Punkten (mit kleiner Toleranz)
-      function isPointsEqual(p1, p2, tolerance = 0.0001) {
-        return (
-          Math.abs(p1.x - p2.x) < tolerance && Math.abs(p1.y - p2.y) < tolerance
-        );
       }
     </script>
   </body>
