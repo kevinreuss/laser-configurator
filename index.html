@@ -302,118 +302,104 @@
               return (y / mapHeight) * svgHeight;
             };
 
-            // Generate SVG paths with clipping
-            let svgContent = "";
+            // Gruppiere Wege nach ihren Eigenschaften
+            const groupedWays = {};
+
             ways.forEach((way) => {
-              const points = [];
-              let lastPoint = null;
-
-              way.nodes.forEach((id) => {
-                const node = nodes[id];
-
-                // Check if the node is within bounds
-                const isInBounds =
-                  node.lat <= visibleBounds.getNorth() &&
-                  node.lat >= visibleBounds.getSouth() &&
-                  node.lon <= visibleBounds.getEast() &&
-                  node.lon >= visibleBounds.getWest();
-
-                if (isInBounds) {
-                  points.push(`${scaleX(node.lon)},${scaleY(node.lat)}`);
-                  lastPoint = node;
-                } else if (lastPoint) {
-                  // Add the point and reset lastPoint to create a break in the line
-                  points.push(`${scaleX(node.lon)},${scaleY(node.lat)}`);
-                  lastPoint = null;
-                }
-              });
-
-              let lineWidth;
-
+              let key;
               if (way.tags.highway) {
-                color = "#000000";
-                switch (way.tags.highway) {
-                  case "motorway":
-                  case "motorway_link":
-                    lineWidth = "12";
-                    break;
-                  case "trunk":
-                  case "trunk_link":
-                    lineWidth = "10";
-                    break;
-                  case "primary":
-                  case "primary_link":
-                    lineWidth = "8";
-                    break;
-                  case "secondary":
-                  case "secondary_link":
-                    lineWidth = "6";
-                    break;
-                  case "tertiary":
-                  case "tertiary_link":
-                    lineWidth = "4";
-                    break;
-                  default:
-                    lineWidth = "3";
-                }
+                key = `highway_${way.tags.highway}`;
               } else if (way.tags.railway) {
-                color = "#ff0000";
-                switch (way.tags.railway) {
-                  case "rail":
-                    lineWidth = "4";
-                    break;
-                  case "subway":
-                  case "light_rail":
-                    lineWidth = "3";
-                    break;
-                  default:
-                    lineWidth = "2";
-                }
+                key = `railway_${way.tags.railway}`;
               } else if (way.tags.waterway) {
-                color = "#0000ff";
-                switch (way.tags.waterway) {
-                  case "river":
-                    lineWidth = "10";
-                    break;
-                  case "canal":
-                    lineWidth = "6";
-                    break;
-                  default:
-                    lineWidth = "4";
-                }
+                key = `waterway_${way.tags.waterway}`;
               }
 
-              // Create separate polylines for each continuous segment
-              const segments = [];
-              let currentSegment = [];
-
-              points.forEach((point) => {
-                const [x, y] = point.split(",").map(Number);
-                if (x >= 0 && x <= svgWidth && y >= 0 && y <= svgHeight) {
-                  currentSegment.push(point);
-                } else if (currentSegment.length > 0) {
-                  segments.push(currentSegment);
-                  currentSegment = [];
-                }
-              });
-
-              if (currentSegment.length > 0) {
-                segments.push(currentSegment);
+              if (!groupedWays[key]) {
+                groupedWays[key] = {
+                  paths: [],
+                  color: way.tags.highway
+                    ? "#000000"
+                    : way.tags.railway
+                    ? "#ff0000"
+                    : "#0000ff",
+                  lineWidth: getLineWidth(way),
+                };
               }
+
+              const points = way.nodes
+                .map((id) => nodes[id])
+                .filter((node) => node && isInBounds(node, visibleBounds))
+                .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`);
 
               if (points.length > 0) {
-                // Erstelle einen SVG-Pfad statt mehrerer Polylines
-                const pathData = points.reduce((acc, point, index) => {
-                  const [x, y] = point.split(",").map(Number);
-                  // Erster Punkt beginnt mit M (Move to)
-                  if (index === 0) return `M ${x} ${y}`;
-                  // Alle weiteren Punkte mit L (Line to)
-                  return `${acc} L ${x} ${y}`;
-                }, "");
-
-                svgContent += `<path d="${pathData}" stroke="${color}" stroke-width="${lineWidth}" fill="none"/>`;
+                groupedWays[key].paths.push(points);
               }
             });
+
+            // Verbesserte Pfadgenerierung für jede Gruppe
+            let svgContent = "";
+            for (const [key, group] of Object.entries(groupedWays)) {
+              // Konvertiere Punkte in numerisches Format für einfachere Verarbeitung
+              const numericPaths = group.paths.map((path) =>
+                path.map((point) => {
+                  const [x, y] = point.split(",").map(Number);
+                  return { x, y };
+                })
+              );
+
+              // Finde und verbinde zusammenhängende Pfade
+              const connectedPaths = [];
+              while (numericPaths.length > 0) {
+                let currentPath = numericPaths.pop();
+                let wasExtended;
+
+                do {
+                  wasExtended = false;
+                  for (let i = numericPaths.length - 1; i >= 0; i--) {
+                    const otherPath = numericPaths[i];
+
+                    // Prüfe Verbindungen an beiden Enden
+                    if (
+                      isPointsEqual(
+                        currentPath[0],
+                        otherPath[otherPath.length - 1]
+                      )
+                    ) {
+                      // Verbinde am Anfang
+                      currentPath = [...otherPath, ...currentPath.slice(1)];
+                      numericPaths.splice(i, 1);
+                      wasExtended = true;
+                    } else if (
+                      isPointsEqual(
+                        currentPath[currentPath.length - 1],
+                        otherPath[0]
+                      )
+                    ) {
+                      // Verbinde am Ende
+                      currentPath = [...currentPath, ...otherPath.slice(1)];
+                      numericPaths.splice(i, 1);
+                      wasExtended = true;
+                    }
+                  }
+                } while (wasExtended);
+
+                connectedPaths.push(currentPath);
+              }
+
+              // Generiere SVG-Pfade aus den verbundenen Segmenten
+              const pathData = connectedPaths
+                .map((path) => {
+                  return path.reduce((acc, point, index) => {
+                    return index === 0
+                      ? `M ${point.x} ${point.y}`
+                      : `${acc} L ${point.x} ${point.y}`;
+                  }, "");
+                })
+                .join(" ");
+
+              svgContent += `<path d="${pathData}" stroke="${group.color}" stroke-width="${group.lineWidth}" fill="none"/>`;
+            }
 
             // Aktualisierte SVG-Generierung
             const finalSvg = `
@@ -454,6 +440,66 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+      }
+
+      // Hilfsfunktion für die Linienbreite
+      function getLineWidth(way) {
+        if (way.tags.highway) {
+          switch (way.tags.highway) {
+            case "motorway":
+            case "motorway_link":
+              return "12";
+            case "trunk":
+            case "trunk_link":
+              return "10";
+            case "primary":
+            case "primary_link":
+              return "8";
+            case "secondary":
+            case "secondary_link":
+              return "6";
+            case "tertiary":
+            case "tertiary_link":
+              return "4";
+            default:
+              return "3";
+          }
+        } else if (way.tags.railway) {
+          switch (way.tags.railway) {
+            case "rail":
+              return "4";
+            case "subway":
+            case "light_rail":
+              return "3";
+            default:
+              return "2";
+          }
+        } else if (way.tags.waterway) {
+          switch (way.tags.waterway) {
+            case "river":
+              return "10";
+            case "canal":
+              return "6";
+            default:
+              return "4";
+          }
+        }
+      }
+
+      function isInBounds(node, bounds) {
+        return (
+          node.lat <= bounds.getNorth() &&
+          node.lat >= bounds.getSouth() &&
+          node.lon <= bounds.getEast() &&
+          node.lon >= bounds.getWest()
+        );
+      }
+
+      // Hilfsfunktion zum Vergleich von Punkten (mit kleiner Toleranz)
+      function isPointsEqual(p1, p2, tolerance = 0.0001) {
+        return (
+          Math.abs(p1.x - p2.x) < tolerance && Math.abs(p1.y - p2.y) < tolerance
+        );
       }
     </script>
   </body>
