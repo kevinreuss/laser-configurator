@@ -24,21 +24,123 @@
         width: 50%;
         border: 1px solid #ccc;
       }
+      .controls {
+        margin: 20px;
+      }
+      .search-container {
+        margin-bottom: 10px;
+      }
+      #searchResults {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        max-height: 200px;
+        overflow-y: auto;
+        width: 300px;
+        display: none;
+      }
+      #searchResults div {
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      #searchResults div:hover {
+        background-color: #f0f0f0;
+      }
     </style>
   </head>
   <body>
     <h1>Laser Configurator</h1>
+    <div class="controls">
+      <div class="search-container">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Ort suchen..."
+          style="width: 300px"
+        />
+        <div id="searchResults"></div>
+      </div>
+      <button onclick="goToLocation('Alexanderplatz, Berlin')">
+        Alexanderplatz Berlin
+      </button>
+      <button onclick="goToLocation('Brandenburger Tor, Berlin')">
+        Brandenburger Tor
+      </button>
+      <button onclick="goToLocation('Kölner Dom')">Kölner Dom</button>
+      <button onclick="goToLocation('Hamburger Hafen')">Hamburger Hafen</button>
+      <button onclick="goToLocation('Münchner Marienplatz')">
+        Münchner Marienplatz
+      </button>
+    </div>
     <div class="container">
       <div id="map"></div>
       <div id="svg-preview"></div>
     </div>
 
     <script>
-      // Initialisiere die Karte
-      const map = L.map("map").setView([51.1657, 10.4515], 13); // Startet in Deutschland
+      // Initialize map centered on Alexanderplatz
+      const map = L.map("map").setView([52.5219, 13.4132], 15); // Alexanderplatz coordinates
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
       }).addTo(map);
+
+      // Search functionality
+      const searchInput = document.getElementById("searchInput");
+      const searchResults = document.getElementById("searchResults");
+      let searchTimeout;
+
+      searchInput.addEventListener("input", function () {
+        clearTimeout(searchTimeout);
+        if (this.value.length < 3) {
+          searchResults.style.display = "none";
+          return;
+        }
+
+        searchTimeout = setTimeout(() => {
+          fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+              this.value
+            )}`
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              searchResults.innerHTML = "";
+              data.slice(0, 5).forEach((result) => {
+                const div = document.createElement("div");
+                div.textContent = result.display_name;
+                div.onclick = () => {
+                  map.setView([result.lat, result.lon], 15);
+                  searchResults.style.display = "none";
+                  searchInput.value = result.display_name;
+                };
+                searchResults.appendChild(div);
+              });
+              searchResults.style.display = data.length ? "block" : "none";
+            });
+        }, 300);
+      });
+
+      // Hide search results when clicking outside
+      document.addEventListener("click", function (e) {
+        if (!searchResults.contains(e.target) && e.target !== searchInput) {
+          searchResults.style.display = "none";
+        }
+      });
+
+      // Function to go to predefined locations
+      function goToLocation(searchQuery) {
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            searchQuery
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.length > 0) {
+              map.setView([data[0].lat, data[0].lon], 15);
+            }
+          });
+      }
 
       // Funktion zum Generieren der SVG
       function generateSVG() {
