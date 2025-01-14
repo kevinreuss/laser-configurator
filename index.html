@@ -398,9 +398,16 @@
               }
 
               if (points.length > 0) {
-                svgContent += `<polyline points="${segments.join(
-                  " "
-                )}" stroke="${color}" stroke-width="${lineWidth}" fill="none"/>`;
+                // Erstelle einen SVG-Pfad statt mehrerer Polylines
+                const pathData = points.reduce((acc, point, index) => {
+                  const [x, y] = point.split(",").map(Number);
+                  // Erster Punkt beginnt mit M (Move to)
+                  if (index === 0) return `M ${x} ${y}`;
+                  // Alle weiteren Punkte mit L (Line to)
+                  return `${acc} L ${x} ${y}`;
+                }, "");
+
+                svgContent += `<path d="${pathData}" stroke="${color}" stroke-width="${lineWidth}" fill="none"/>`;
               }
             });
 
