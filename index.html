@@ -71,14 +71,10 @@
                 .map((node) => [node.id, { lat: node.lat, lon: node.lon }])
             );
 
-            // Get the visible bounds of the map
             const visibleBounds = map.getBounds();
+            const svgWidth = 500;
+            const svgHeight = 500;
 
-            // Calculate SVG viewport based on visible bounds
-            const svgWidth = 500; // Match map width
-            const svgHeight = 500; // Match map height
-
-            // Create scaling functions that map lat/lon to SVG coordinates
             const scaleX = (lon) =>
               ((lon - visibleBounds.getWest()) /
                 (visibleBounds.getEast() - visibleBounds.getWest())) *
@@ -89,26 +85,70 @@
                 (visibleBounds.getNorth() - visibleBounds.getSouth())) *
                 svgHeight;
 
-            // Generate SVG paths
+            // Generate SVG paths with clipping
             let svgContent = "";
             ways.forEach((way) => {
-              const points = way.nodes
-                .map((id) => nodes[id])
-                .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`)
-                .join(" ");
+              const points = [];
+              let lastPoint = null;
 
-              // Set different colors based on the way type
-              let color = "black"; // default for roads
-              let width = "0.5";
-              if (way.tags.railway) {
-                color = "#666";
-                width = "0.8";
-              } else if (way.tags.waterway) {
-                color = "#0077be";
-                width = "1";
+              way.nodes.forEach((id) => {
+                const node = nodes[id];
+
+                // Check if the node is within bounds
+                const isInBounds =
+                  node.lat <= visibleBounds.getNorth() &&
+                  node.lat >= visibleBounds.getSouth() &&
+                  node.lon <= visibleBounds.getEast() &&
+                  node.lon >= visibleBounds.getWest();
+
+                if (isInBounds) {
+                  points.push(`${scaleX(node.lon)},${scaleY(node.lat)}`);
+                  lastPoint = node;
+                } else if (lastPoint) {
+                  // Add the point and reset lastPoint to create a break in the line
+                  points.push(`${scaleX(node.lon)},${scaleY(node.lat)}`);
+                  lastPoint = null;
+                }
+              });
+
+              if (points.length > 0) {
+                let color = "black";
+                let width = "0.5";
+                if (way.tags.railway) {
+                  color = "#666";
+                  width = "0.8";
+                } else if (way.tags.waterway) {
+                  color = "#0077be";
+                  width = "1";
+                }
+
+                // Create separate polylines for each continuous segment
+                const segments = [];
+                let currentSegment = [];
+
+                points.forEach((point) => {
+                  const [x, y] = point.split(",").map(Number);
+                  if (x >= 0 && x <= svgWidth && y >= 0 && y <= svgHeight) {
+                    currentSegment.push(point);
+                  } else if (currentSegment.length > 0) {
+                    segments.push(currentSegment);
+                    currentSegment = [];
+                  }
+                });
+
+                if (currentSegment.length > 0) {
+                  segments.push(currentSegment);
+                }
+
+                // Draw each segment
+                segments.forEach((segment) => {
+                  if (segment.length > 1) {
+                    svgContent += `<polyline points="${segment.join(
+                      " "
+                    )}" stroke="${color}" stroke-width="${width}" fill="none"/>`;
+                  }
+                });
               }
-
-              svgContent += `<polyline points="${points}" stroke="${color}" stroke-width="${width}" fill="none"/>`;
             });
 
             // Complete SVG
@@ -118,7 +158,6 @@
               </svg>
             `;
 
-            // Update preview
             const svgPreview = document.getElementById("svg-preview");
             svgPreview.innerHTML = finalSvg;
           });
