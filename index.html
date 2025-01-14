@@ -24,17 +24,6 @@
         width: 50%;
         border: 1px solid #ccc;
       }
-      .heart {
-        position: absolute;
-        top: 50%;
-        left: 25%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        fill: none;
-        stroke: red;
-        stroke-width: 2;
-        z-index: 1000;
-      }
     </style>
   </head>
   <body>
@@ -57,40 +46,21 @@
         }
       ).addTo(map);
 
-      // Zeichne das Herz-Overlay
-      const svgOverlay = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "svg"
-      );
-      svgOverlay.setAttribute("class", "heart");
-      svgOverlay.setAttribute("width", "300");
-      svgOverlay.setAttribute("height", "300");
-      const path = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-      path.setAttribute(
-        "d",
-        "M150,50 C220,-30 320,30 150,200 C-20,30 80,-30 150,50 Z"
-      ); // Herz-Form
-      svgOverlay.appendChild(path);
-      document.body.appendChild(svgOverlay);
-
       // Funktion zum Generieren der SVG
       function generateSVG() {
         const bounds = map.getBounds();
 
         const query = `
-        [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
-        (
-          way["highway"]["highway"!~"footway|path|cycleway|service|track"];
-          way["waterway"];
-          way["railway"];
-        );
-        out body;
-        >;
-        out skel qt;
-      `;
+          [out:json][bbox:${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}];
+          (
+            way["highway"]["highway"!~"footway|path|cycleway|service|track"];
+            way["waterway"];
+            way["railway"];
+          );
+          out body;
+          >;
+          out skel qt;
+        `;
 
         fetch(
           `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(
@@ -99,11 +69,9 @@
         )
           .then((response) => response.json())
           .then((data) => {
-            console.log("Rohdaten von Overpass:", data);
             const ways = data.elements.filter((el) => el.type === "way");
-            console.log("Gefundene Wege:", ways.length);
 
-            // Debug: Zeige die gefundenen Wege auf der Karte
+            // Debug-Anzeige auf der Karte
             ways.forEach((way) => {
               const nodes = way.nodes.map((nodeId) => {
                 const node = data.elements.find(
@@ -112,7 +80,7 @@
                 return [node.lat, node.lon];
               });
 
-              let color = "black"; // Standard für Straßen
+              let color = "black";
               if (way.tags.waterway) {
                 color = "blue";
               } else if (way.tags.railway) {
@@ -127,15 +95,13 @@
                 .filter((el) => el.type === "node")
                 .map((node) => [node.id, { lat: node.lat, lon: node.lon }])
             );
-            console.log("Anzahl Nodes:", Object.keys(nodes).length);
 
-            // Finde min/max Koordinaten basierend auf den tatsächlichen Straßenpunkten
+            // Finde min/max Koordinaten
             let minLon = Infinity,
               maxLon = -Infinity;
             let minLat = Infinity,
               maxLat = -Infinity;
 
-            // Zuerst alle Straßenpunkte durchgehen
             ways.forEach((way) => {
               way.nodes.forEach((nodeId) => {
                 const node = nodes[nodeId];
@@ -146,61 +112,20 @@
               });
             });
 
-            // Sichtbare Kartengrenzen für das Herz
-            const visibleBounds = map.getBounds();
-            const centerLon =
-              (visibleBounds.getEast() + visibleBounds.getWest()) / 2;
-            const centerLat =
-              (visibleBounds.getNorth() + visibleBounds.getSouth()) / 2;
-
-            // Skalierungsfunktionen für die Straßen basierend auf den tatsächlichen Grenzen
+            // Skalierungsfunktionen
             const scaleX = (lon) => ((lon - minLon) / (maxLon - minLon)) * 300;
             const scaleY = (lat) =>
               300 - ((lat - minLat) / (maxLat - minLat)) * 300;
 
-            // Berechne die Herzgröße basierend auf dem sichtbaren Kartenausschnitt
-            const visibleWidth =
-              visibleBounds.getEast() - visibleBounds.getWest();
-            const visibleHeight =
-              visibleBounds.getNorth() - visibleBounds.getSouth();
-            const heartSize = Math.min(visibleWidth, visibleHeight) * 0.4;
-
-            // Skaliere das Herz
-            const heartCenterX = scaleX(centerLon);
-            const heartCenterY = scaleY(centerLat);
-            const heartScale = (heartSize / (maxLon - minLon)) * 300;
-
-            const heartPath = `
-              <path d="M${heartCenterX},${heartCenterY - 100} 
-                      C${heartCenterX + 70},${heartCenterY - 180} ${
-              heartCenterX + 170
-            },${heartCenterY - 120} ${heartCenterX},${heartCenterY + 50}
-                      C${heartCenterX - 170},${heartCenterY - 120} ${
-              heartCenterX - 70
-            },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z" />
-            `;
-
-            // Generiere das SVG mit den Straßen und dem Herz
+            // Generiere das SVG nur mit den Straßen
             let svgContent = "";
-
-            // Füge zuerst das Herz ein
-            svgContent += `<path d="M${heartCenterX},${heartCenterY - 100} 
-                      C${heartCenterX + 70},${heartCenterY - 180} ${
-              heartCenterX + 170
-            },${heartCenterY - 120} ${heartCenterX},${heartCenterY + 50}
-                      C${heartCenterX - 170},${heartCenterY - 120} ${
-              heartCenterX - 70
-            },${heartCenterY - 180} ${heartCenterX},${heartCenterY - 100} Z"
-                      fill="none" stroke="red" stroke-width="2"/>`;
-
-            // Füge dann die Straßen, Gewässer und Bahnlinien hinzu
             ways.forEach((way) => {
               const points = way.nodes
                 .map((id) => nodes[id])
                 .map((node) => `${scaleX(node.lon)},${scaleY(node.lat)}`)
                 .join(" ");
 
-              let strokeColor = "black"; // Standard für Straßen
+              let strokeColor = "black";
               if (way.tags.waterway) {
                 strokeColor = "blue";
               } else if (way.tags.railway) {
@@ -212,17 +137,14 @@
 
             // Komplettes SVG
             const finalSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
-              ${svgContent}
-            </svg>
-          `;
+              <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+                ${svgContent}
+              </svg>
+            `;
 
-            // Statt einem neuen Tab, füge die SVG in das Preview-Div ein
+            // Update Preview
             const svgPreview = document.getElementById("svg-preview");
             svgPreview.innerHTML = finalSvg;
-
-            // Aktualisiere auch das Overlay-Herz
-            path.setAttribute("d", heartPath.match(/d="([^"]+)"/)[1]);
           });
       }
 
